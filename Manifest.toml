@@ -334,8 +334,8 @@ version = "1.0.3"
 
 [[LabelledArrays]]
 deps = ["InteractiveUtils", "StaticArrays", "Test"]
-git-tree-sha1 = "ab49b3f3df8d8a7e82effcb76c5ecea2bdbe85c9"
-repo-rev = "master"
+git-tree-sha1 = "2ca8bcb25ea43d3626e65565bb5788696482490e"
+repo-rev = "lmatrix"
 repo-url = "https://github.com/rafaqz/LabelledArrays.jl"
 uuid = "2ee39098-c373-598a-b85f-a56591580800"
 version = "0.3.0+"
