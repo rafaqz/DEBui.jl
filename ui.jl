@@ -8,7 +8,7 @@ using InteractBulma, InteractBase, Blink, WebIO, Observables, CSSUtil
 using Mux
 using FieldMetadata
 using Plots, UnitfulPlots, PlotNested
-# using StatPlots
+using StatPlots
 import Plots:px, pct, GridLayout
 import InteractBase: WidgetTheme, libraries
 using DynamicEnergyBudgets: STATE, STATE1, TRANS, TRANS1, shape_correction, define_organs,
@@ -16,6 +16,7 @@ using DynamicEnergyBudgets: STATE, STATE1, TRANS, TRANS1, shape_correction, defi
 
 include("hide.jl")
 include("environment.jl")
+# env = en# load_environment()
 
 # gr()
 plotly()
@@ -146,12 +147,14 @@ build_model(params, su, cat, rate, prod, mat, rej, trans, shape, allometry, assi
     sh = SharedParams(su_pars=su(), tempcorr_pars=temp(), feedback_pars=feedback())
     envstart = setindex!(Array{typeof(envstart),0}(undef), envstart)
     Organism(params=(p1, p2), shared=sh, environment=env, time=tspan, environment_start=envstart, 
-             vars=(DynamicEnergyBudgets.ShootVars(), DynamicEnergyBudgets.RootVars()))
+             vars=(DynamicEnergyBudgets.FvCBShootVars(), DynamicEnergyBudgets.RootVars()))
 end
 
 function muxapp(req) # an "App" takes a request, returns the output
-    env = load_environment()
-    # envobs = Observable{Any}(env);
+    # env = load_environment()
+    env = build_env(SOLR, TA1cm, soiltemps, i)
+
+    envobs = Observable{Any}(env);
 
     tstop = slider(20:tspan.stop, label="Timespan")
     reload = button("Reload")
@@ -168,7 +171,7 @@ function muxapp(req) # an "App" takes a request, returns the output
     translocationdrop = dropdown([Nothing, allsubtypes(AbstractTranslocation)...], label="Translocation")
     shapedrop = dropdown([allsubtypes(AbstractShape)...], value=Isomorph, label="Shape")
     allometrydrop = dropdown([Nothing, allsubtypes(AbstractAllometry)...], label="Allometry")
-    assimdrop1 = dropdown([Nothing, allsubtypes(AbstractAssim)...], value=ConstantCAssim, label="Assimilation")
+    assimdrop1 = dropdown([Nothing, allsubtypes(AbstractAssim)...], value=FvCBPhotosynthesis, label="Assimilation")
     assimdrop2 = dropdown([Nothing, allsubtypes(AbstractAssim)...], value=ConstantNAssim, label="Assimilation")
     tempdrop = dropdown([Nothing, allsubtypes(AbstractTempCorr)...], label="Temp Correction")
     feedbackdrop = dropdown([Nothing, allsubtypes(AbstractStateFeedback)...], label="State Feedback")
@@ -184,7 +187,6 @@ function muxapp(req) # an "App" takes a request, returns the output
         modelobs[] = build_model(paramsdrop[], sudrop[], catabolismdrop[], ratedrop[], productiondrop[], maturitydrop[], rejectiondrop[], translocationdrop[], shapedrop[],
                                  allometrydrop[], assimdrop1[], assimdrop2[], tempdrop[], feedbackdrop[], env, envstart[])
         global globmodel = modelobs[]
-        # plotobs[] = make_plot(modelobs[], varobs[], stateobs[], paramobs[], fluxobs[], observe(tstop)[])
         # plotobs[] = make_plot(modelobs[], varobs[], stateobs[], paramobs[], fluxobs[], observe(tstop)[])
     end
 
@@ -218,8 +220,10 @@ function muxapp(req) # an "App" takes a request, returns the output
         limits = metaflatten(Vector, m, DynamicEnergyBudgets.limits)
         descriptions = metaflatten(Vector, m, DynamicEnergyBudgets.description)
         attributes = broadcast((p, n, d) -> Dict(:title => "$p.$n: $d"), parents, fnames, descriptions)
-        sl = broadcast((x,l,v,a) -> InteractBase.slider(x[1]:(x[2]-x[1])/100:x[2], label=string(l), value=v, attributes=a),
-                       limits, fnames, params, attributes)
+        sl = broadcast(limits, fnames, params, attributes) do x, l, v, a
+            println((x, l, v, a))
+            InteractBase.slider(x[1]:(x[2]-x[1])/100:x[2], label=string(l), value=v, attributes=a)
+        end
         map!((x...) -> [x...], paramobs, throttle.(0.2, observe.(sl))...)
         sl
     end
